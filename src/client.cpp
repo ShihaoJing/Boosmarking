@@ -86,8 +86,8 @@ private:
     }
     else
     {
-      std::cout << "# " <<  new_connection->getConnectionID() << endl
-           " connection error: " << error.message() << std::endl;
+      std::cout << "# " <<  getConnectionID() << std::endl;
+      std::cout << " connection error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -109,8 +109,8 @@ private:
     }
     else
     {
-      std::cout << "# " <<  new_connection->getConnectionID() << endl
-           " connection error: " << error.message() << std::endl;
+      std::cout << "# " <<  getConnectionID() << std::endl;
+      std::cout << " connection error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -162,8 +162,8 @@ public:
     }
     else
     {
-      std::cout << "# " <<  new_connection->getConnectionID() << endl
-           " connection error: " << error.message() << std::endl;
+      std::cout << "# " <<  new_connection->getConnectionID() << std::endl;
+      std::cout << " connection error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
