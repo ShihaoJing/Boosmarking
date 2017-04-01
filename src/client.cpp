@@ -20,9 +20,15 @@ public:
         buffer(messageSize, '0')
   {
     ++runningConnections;
+    connectionID = runningConnections;
     sock.set_verify_mode(boost::asio::ssl::verify_peer);
     sock.set_verify_callback(
         boost::bind(&Connection::verify_certificate, this, _1, _2));
+  }
+
+  std::size_t getConnectionID()
+  {
+    return connectionID;
   }
 
   ~Connection() { --runningConnections; }
@@ -80,7 +86,8 @@ private:
     }
     else
     {
-      std::cout << error.message() << std::endl;
+      std::cout << "# " <<  new_connection->getConnectionID() << endl
+           " connection error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -102,7 +109,8 @@ private:
     }
     else
     {
-      std::cout << error.message() << std::endl;
+      std::cout << "# " <<  new_connection->getConnectionID() << endl
+           " connection error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -110,6 +118,7 @@ private:
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sock;
   std::vector<char> buffer;
   std::size_t m_messages;
+  std::size_t connectionID;
 };
 
 std::atomic<std::size_t> Connection::runningConnections{0};
@@ -153,7 +162,8 @@ public:
     }
     else
     {
-      std::cout << error.message() << std::endl;
+      std::cout << "# " <<  new_connection->getConnectionID() << endl
+           " connection error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
