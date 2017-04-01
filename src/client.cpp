@@ -254,11 +254,11 @@ int main(int argc, char const *argv[])
     auto megabytes =
         static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
 
-    std::cout << "Total connections: " << connections;
+    std::cout << "Total connections: " << connections << std::endl;
     std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
-    std::cout << "Connection errors: " << Connection::connectionError;
-    std::cout << "Connection errors: " << Connection::connectionError;
-    std::cout << "Connection errors: " << Connection::connectionError;
+    std::cout << "Connection errors: " << Connection::connectionError << std::endl;
+    std::cout << "Handshake errors: " << Connection::handshakeError << std::endl;
+    std::cout << "Write errors: " << Connection::writeError << std::endl;
     std::cout << megabytes << " megabytes sent and received in " << seconds
               << " seconds. (" << (megabytes / seconds) << " MB/s)"
               << std::endl;
