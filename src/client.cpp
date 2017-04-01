@@ -50,6 +50,12 @@ public:
         boost::asio::placeholders::error));
   }
 
+
+  static std::atomic<std::size_t> connectionError;
+  static std::atomic<std::size_t> handshakeError;
+  static std::atomic<std::size_t> writeError;
+
+
 private:
   bool verify_certificate(bool preverified,
       boost::asio::ssl::verify_context& ctx)
@@ -87,8 +93,9 @@ private:
     else
     {
       std::cout << "# " <<  getConnectionID() << std::endl;
-      std::cout << " handshake error: " << error.message() << std::endl;
-      Connection::increaseCancledConnection();
+      std::cout << "handshake error: " << error.message() << std::endl;
+      ++handshakeError;
+      increaseCancledConnection();
     }
   }
 
@@ -110,8 +117,9 @@ private:
     else
     {
       std::cout << "# " <<  getConnectionID() << std::endl;
-      std::cout << " write error: " << error.message() << std::endl;
-      Connection::increaseCancledConnection();
+      std::cout << "write error: " << error.message() << std::endl;
+      ++writeError;
+      increaseCancledConnection();
     }
   }
 
@@ -121,8 +129,13 @@ private:
   std::size_t connectionID;
 };
 
+
 std::atomic<std::size_t> Connection::runningConnections{0};
 std::atomic<std::size_t> Connection::cancledConnections{0};
+std::atomic<std::size_t> Connection::connectionError{0};
+std::atomic<std::size_t> Connection::handshakeError{0};
+std::atomic<std::size_t> Connection::writeError{0};
+
 
 class ClientService
 {
@@ -163,7 +176,8 @@ public:
     else
     {
       std::cout << "# " <<  new_connection->getConnectionID() << std::endl;
-      std::cout << " connection error: " << error.message() << std::endl;
+      std::cout << "connection error: " << error.message() << std::endl;
+      ++Connection::connectionError;
       Connection::increaseCancledConnection();
     }
   }
@@ -240,10 +254,14 @@ int main(int argc, char const *argv[])
     auto megabytes =
         static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
 
+    std::cout << "Total connections: " << connections;
+    std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
+    std::cout << "Connection errors: " << Connection::connectionError;
+    std::cout << "Connection errors: " << Connection::connectionError;
+    std::cout << "Connection errors: " << Connection::connectionError;
     std::cout << megabytes << " megabytes sent and received in " << seconds
               << " seconds. (" << (megabytes / seconds) << " MB/s)"
               << std::endl;
-    std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
     
 
   }
