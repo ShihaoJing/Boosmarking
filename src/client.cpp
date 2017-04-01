@@ -7,6 +7,7 @@
 #include <boost/make_shared.hpp>
 #include <atomic>
 #include <thread>
+#include <fstream>
 
 class Connection : public boost::enable_shared_from_this<Connection>
 {
@@ -92,8 +93,8 @@ private:
     }
     else
     {
-      std::cout << "# " <<  getConnectionID() << std::endl;
-      std::cout << "handshake error: " << error.message() << std::endl;
+      // std::cout << "# " <<  getConnectionID() << std::endl;
+      // std::cout << "handshake error: " << error.message() << std::endl;
       ++handshakeError;
       increaseCancledConnection();
     }
@@ -116,8 +117,8 @@ private:
     }
     else
     {
-      std::cout << "# " <<  getConnectionID() << std::endl;
-      std::cout << "write error: " << error.message() << std::endl;
+      // std::cout << "# " <<  getConnectionID() << std::endl;
+      // std::cout << "write error: " << error.message() << std::endl;
       ++writeError;
       increaseCancledConnection();
     }
@@ -175,8 +176,8 @@ public:
     }
     else
     {
-      std::cout << "# " <<  new_connection->getConnectionID() << std::endl;
-      std::cout << "connection error: " << error.message() << std::endl;
+      // std::cout << "# " <<  new_connection->getConnectionID() << std::endl;
+      // std::cout << "connection error: " << error.message() << std::endl;
       ++Connection::connectionError;
       Connection::increaseCancledConnection();
     }
@@ -254,15 +255,34 @@ int main(int argc, char const *argv[])
     auto megabytes =
         static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
 
-    std::cout << "Total connections: " << connections << std::endl;
-    std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
-    std::cout << "Connection errors: " << Connection::connectionError << std::endl;
-    std::cout << "Handshake errors: " << Connection::handshakeError << std::endl;
-    std::cout << "Write errors: " << Connection::writeError << std::endl;
-    std::cout << megabytes << " megabytes sent and received in " << seconds
-              << " seconds. (" << (megabytes / seconds) << " MB/s)"
-              << std::endl;
+    std::cout << connections << " " << seconds << std::endl;
+    // std::cout << "Total connections: " << connections << std::endl;
+    // std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
+    // std::cout << "Connection errors: " << Connection::connectionError << std::endl;
+    // std::cout << "Handshake errors: " << Connection::handshakeError << std::endl;
+    // std::cout << "Write errors: " << Connection::writeError << std::endl;
+    // std::cout << megabytes << " megabytes sent and received in " << seconds
+    //           << " seconds. (" << (megabytes / seconds) << " MB/s)"
+    //           << std::endl;
     
+    // if (argc == 7)
+    // {
+    //   std::cout << argv[6] << std::endl;
+    //   std::ofstream out(argv[6], std::ofstream::out|std::ofstream::app);
+    //   if (out)
+    //   {
+    //     out << connections << " " << Connection::getCancledConnections() << " "
+    //       << Connection::connectionError << " " << Connection::handshakeError  
+    //       << " " << Connection::writeError << " " << megabytes << " "
+    //       << seconds << std::endl;
+    //     out.close();
+    //   }
+    //   else
+    //   {
+    //     std::cerr << "can not open " << argv[6] << std::endl;
+    //   }
+      
+    // }
 
   }
   catch (std::exception& e)
