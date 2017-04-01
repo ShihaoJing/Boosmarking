@@ -11,4 +11,3 @@ elif [[ "$OSTYPE" == "darwin"* ]]; then
         # Mac OSX
         cmake -DOPENSSL_ROOT_DIR=$(brew --prefix openssl) -DOPENSSL_INCLUDE_DIR=$(brew --prefix openssl)"/include" ..
 fi
-make

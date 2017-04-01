@@ -20,13 +20,16 @@ public:
         buffer(messageSize, '0')
   {
     ++runningConnections;
+    sock.set_verify_mode(boost::asio::ssl::verify_peer);
+    sock.set_verify_callback(
+        boost::bind(&Connection::verify_certificate, this, _1, _2));
   }
 
   ~Connection() { --runningConnections; }
 
   static std::size_t getRunningConnections() { return runningConnections; }
   static std::size_t getCancledConnections() { return cancledConnections; }
-  static std::size_t increaseCancledConnection() { ++cancledConnections; }
+  static void increaseCancledConnection() { ++cancledConnections; }
 
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
                   ::lowest_layer_type &socket()
@@ -42,6 +45,24 @@ public:
   }
 
 private:
+  bool verify_certificate(bool preverified,
+      boost::asio::ssl::verify_context& ctx)
+  {
+    // The verify callback can be used to check whether the certificate that is
+    // being presented is valid for the peer. For example, RFC 2818 describes
+    // the steps involved in doing this for HTTPS. Consult the OpenSSL
+    // documentation for more details. Note that the callback is called once
+    // for each certificate in the certificate chain, starting from the root
+    // certificate authority.
+
+    // In this example we will simply print the certificate's subject name.
+    char subject_name[256];
+    X509* cert = X509_STORE_CTX_get_current_cert(ctx.native_handle());
+    X509_NAME_oneline(X509_get_subject_name(cert), subject_name, 256);
+
+    return preverified;
+  }
+
   void handle_handshake(const boost::system::error_code& error)
   {
     if (!error)
@@ -197,7 +218,7 @@ int main(int argc, char const *argv[])
     boost::asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
 
     boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
-    ctx.set_default_verify_paths();
+    ctx.load_verify_file("cacert.pem");
 
     ClientService cService(io_service, ctx, iterator, connections, messages, messageSize);
 
