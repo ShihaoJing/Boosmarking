@@ -87,7 +87,7 @@ private:
     else
     {
       std::cout << "# " <<  getConnectionID() << std::endl;
-      std::cout << " connection error: " << error.message() << std::endl;
+      std::cout << " handshake error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -110,7 +110,7 @@ private:
     else
     {
       std::cout << "# " <<  getConnectionID() << std::endl;
-      std::cout << " connection error: " << error.message() << std::endl;
+      std::cout << " write error: " << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
