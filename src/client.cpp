@@ -80,6 +80,7 @@ private:
     }
     else
     {
+      std::cout << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -101,6 +102,7 @@ private:
     }
     else
     {
+      std::cout << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
@@ -151,6 +153,7 @@ public:
     }
     else
     {
+      std::cout << error.message() << std::endl;
       Connection::increaseCancledConnection();
     }
   }
