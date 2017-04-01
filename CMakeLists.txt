@@ -13,8 +13,6 @@ INCLUDE_DIRECTORIES( ${Boost_INCLUDE_DIR} )
 
 add_executable(server server.cpp)
 add_executable(client client.cpp)
-add_executable(benchmark benchmark.cpp)
 
 TARGET_LINK_LIBRARIES(server ${Boost_LIBRARIES} ssl crypto)
 TARGET_LINK_LIBRARIES(client ${Boost_LIBRARIES} pthread ssl crypto)
-TARGET_LINK_LIBRARIES(benchmark ${Boost_LIBRARIES} ssl crypto)
