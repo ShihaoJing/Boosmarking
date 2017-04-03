@@ -286,7 +286,6 @@ int main(int argc, char const *argv[])
     {
       if (d > -1.0)
       {
-        std::cout << d << std::endl;
         average += d;
       }
     }
