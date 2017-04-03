@@ -8,6 +8,10 @@
 #include <atomic>
 #include <thread>
 #include <fstream>
+#include <vector>
+
+
+std::vector<double> durations;
 
 class Connection : public boost::enable_shared_from_this<Connection>
 {
@@ -32,7 +36,19 @@ public:
     return connectionID;
   }
 
-  ~Connection() { --runningConnections; }
+  ~Connection() 
+  {
+    stopTime = std::chrono::steady_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    stopTime - startTime);
+    auto seconds = static_cast<double>(duration.count()) / 1000;
+    durations[connectionID] = seconds;
+    if (failed)
+    {
+      durations[connectionID] = -1.0;
+    }
+    --runningConnections; 
+  }
 
   static std::size_t getRunningConnections() { return runningConnections; }
   static std::size_t getCancledConnections() { return cancledConnections; }
@@ -54,7 +70,10 @@ public:
 
   static std::atomic<std::size_t> connectionError;
   static std::atomic<std::size_t> handshakeError;
-  static std::atomic<std::size_t> writeError;
+  static std::atomic<std::size_t> writeError; 
+  bool failed = false;
+  decltype(std::chrono::steady_clock::now()) startTime;
+  decltype(std::chrono::steady_clock::now()) stopTime;
 
 
 private:
@@ -96,6 +115,7 @@ private:
       // std::cout << "# " <<  getConnectionID() << std::endl;
       // std::cout << "handshake error: " << error.message() << std::endl;
       ++handshakeError;
+      failed = true;
       increaseCancledConnection();
     }
   }
@@ -120,6 +140,7 @@ private:
       // std::cout << "# " <<  getConnectionID() << std::endl;
       // std::cout << "write error: " << error.message() << std::endl;
       ++writeError;
+      failed = true;
       increaseCancledConnection();
     }
   }
@@ -160,7 +181,7 @@ public:
       auto new_connection = boost::make_shared<Connection>(m_service, 
                                   m_context, m_messages, 
                                   m_messageSize);
-                           
+      new_connection->startTime = std::chrono::steady_clock::now();            
       boost::asio::async_connect(new_connection->socket(), m_iterator,
             boost::bind(&ClientService::handle_connect, this, new_connection,
             boost::asio::placeholders::error));
@@ -178,6 +199,7 @@ public:
     {
       // std::cout << "# " <<  new_connection->getConnectionID() << std::endl;
       // std::cout << "connection error: " << error.message() << std::endl;
+      new_connection->failed = true;
       ++Connection::connectionError;
       Connection::increaseCancledConnection();
     }
@@ -238,6 +260,7 @@ int main(int argc, char const *argv[])
     std::size_t connections = std::atoll(argv[3]);
     std::size_t messages = std::atoll(argv[4]);
     std::size_t messageSize = std::atoll(argv[5]);
+    durations = std::vector<double>(connections+1);
 
     boost::asio::io_service io_service;
 
@@ -255,7 +278,46 @@ int main(int argc, char const *argv[])
     auto megabytes =
         static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
 
-    std::cout << connections << " " << seconds << std::endl;
+    // std::cout << connections << " " << Connection::getCancledConnections() << " "
+    //           << seconds << std::endl;
+
+    double average = 0;
+    for (auto d : durations)
+    {
+      if (d > -1.0)
+      {
+        std::cout << d << std::endl;
+        average += d;
+      }
+    }
+
+    average = average / (connections-static_cast<double>(Connection::getCancledConnections()));
+
+    double median;
+
+    std::sort(durations.begin()+1, durations.end());
+    int startPos = 1;
+    for (int i = 0; i < durations.size(); ++i)
+    {
+      if (durations[i] > 0.0)
+      {
+        startPos = i;
+        break;
+      }
+    }
+
+    int size = (durations.size() - startPos);
+    if (size  % 2 == 0)
+    {
+        median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
+    }
+    else 
+    {
+        median = durations[startPos + size / 2];
+    }
+
+    std::cout << connections << " " << average << " "  << median << std::endl;
+
     // std::cout << "Total connections: " << connections << std::endl;
     // std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
     // std::cout << "Connection errors: " << Connection::connectionError << std::endl;
