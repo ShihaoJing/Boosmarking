@@ -1,5 +1,8 @@
 add_executable(server server.cpp)
 add_executable(client client.cpp)
+add_executable(simpleclient simpleclient.cpp)
+add_executable(simpleserver simpleserver.cpp)
+add_executable(tinsclient tinsclient.cpp)
 
 FIND_PACKAGE(Boost COMPONENTS thread system REQUIRED)
 INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
@@ -11,6 +14,9 @@ else()
   INCLUDE_DIRECTORIES(${OPENSSL_INCLUDE_DIR})
   TARGET_LINK_LIBRARIES(server ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
   TARGET_LINK_LIBRARIES(client ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+  TARGET_LINK_LIBRARIES(simpleclient ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+  TARGET_LINK_LIBRARIES(simpleserver ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES})
+
 endif()
 
 # if(NOT LINUX) should work, too, if you need that
@@ -19,7 +25,11 @@ if(LINUX)
     # linux stuff here
     TARGET_LINK_LIBRARIES(server ${Boost_LIBRARIES} ssl crypto)
     TARGET_LINK_LIBRARIES(client ${Boost_LIBRARIES} ssl crypto)
+    TARGET_LINK_LIBRARIES(simpleclient ${Boost_LIBRARIES} ssl crypto)
+    TARGET_LINK_LIBRARIES(simpleserver ${Boost_LIBRARIES} ssl crypto)
 else()
     message(STATUS ">>> Not Linux")
     # stuff that should happen not on Linux 
 endif()
+
+TARGET_LINK_LIBRARIES(tinsclient tins)

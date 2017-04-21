@@ -19,9 +19,9 @@ static std::atomic<std::size_t> runningConnections;
 static std::atomic<std::size_t> cancledConnections;
 public:
   Connection(boost::asio::io_service &io_service,
-             boost::asio::ssl::context &context, 
+             boost::asio::ssl::context &context,
              std::size_t messages, std::size_t messageSize)
-      : sock(io_service, context), m_messages(messages), 
+      : sock(io_service, context), m_messages(messages),
         buffer(messageSize, '0')
   {
     ++runningConnections;
@@ -36,7 +36,7 @@ public:
     return connectionID;
   }
 
-  ~Connection() 
+  ~Connection()
   {
     stopTime = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -47,7 +47,7 @@ public:
     {
       durations[connectionID] = -1.0;
     }
-    --runningConnections; 
+    --runningConnections;
   }
 
   static std::size_t getRunningConnections() { return runningConnections; }
@@ -70,7 +70,7 @@ public:
 
   static std::atomic<std::size_t> connectionError;
   static std::atomic<std::size_t> handshakeError;
-  static std::atomic<std::size_t> writeError; 
+  static std::atomic<std::size_t> writeError;
   bool failed = false;
   decltype(std::chrono::steady_clock::now()) startTime;
   decltype(std::chrono::steady_clock::now()) stopTime;
@@ -104,11 +104,11 @@ private:
         --m_messages;
         boost::asio::async_write(sock, boost::asio::buffer(buffer),
                                boost::bind(&Connection::handle_write,
-                               shared_from_this(), 
+                               shared_from_this(),
                                boost::asio::placeholders::error,
                                boost::asio::placeholders::bytes_transferred));
       }
-      
+
     }
     else
     {
@@ -130,7 +130,7 @@ private:
         --m_messages;
         boost::asio::async_write(sock, boost::asio::buffer(buffer),
                                boost::bind(&Connection::handle_write,
-                               shared_from_this(), 
+                               shared_from_this(),
                                boost::asio::placeholders::error,
                                boost::asio::placeholders::bytes_transferred));
       }
@@ -165,27 +165,27 @@ public:
   ClientService(boost::asio::io_service &service,
                 boost::asio::ssl::context &context,
                 boost::asio::ip::tcp::resolver::iterator &iterator,
-                std::size_t connections, std::size_t messages, 
+                std::size_t connections, std::size_t messages,
                 std::size_t messageSize)
-                : m_service(service), m_context(context), m_iterator(iterator), 
-                m_connections(connections), m_messageSize(messageSize), 
+                : m_service(service), m_context(context), m_iterator(iterator),
+                m_connections(connections), m_messageSize(messageSize),
                 m_messages(messages)
   {
     //do nothing
   }
 
-  void start() 
-  { 
+  void start()
+  {
     for (std::size_t i = 0; i != m_connections; ++i)
     {
-      auto new_connection = boost::make_shared<Connection>(m_service, 
-                                  m_context, m_messages, 
+      auto new_connection = boost::make_shared<Connection>(m_service,
+                                  m_context, m_messages,
                                   m_messageSize);
-      new_connection->startTime = std::chrono::steady_clock::now();            
+      new_connection->startTime = std::chrono::steady_clock::now();
       boost::asio::async_connect(new_connection->socket(), m_iterator,
             boost::bind(&ClientService::handle_connect, this, new_connection,
             boost::asio::placeholders::error));
-    } 
+    }
   }
 
   void handle_connect(boost::shared_ptr<Connection> new_connection,
@@ -224,7 +224,7 @@ std::vector<std::thread> createThreads(
     return threads;
 }
 
-std::chrono::milliseconds measureTransferTime(ClientService &cService, 
+std::chrono::milliseconds measureTransferTime(ClientService &cService,
                                               boost::asio::io_service &service)
 {
 
@@ -310,7 +310,7 @@ int main(int argc, char const *argv[])
     {
         median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
     }
-    else 
+    else
     {
         median = durations[startPos + size / 2];
     }
@@ -325,7 +325,7 @@ int main(int argc, char const *argv[])
     // std::cout << megabytes << " megabytes sent and received in " << seconds
     //           << " seconds. (" << (megabytes / seconds) << " MB/s)"
     //           << std::endl;
-    
+
     // if (argc == 7)
     // {
     //   std::cout << argv[6] << std::endl;
@@ -333,7 +333,7 @@ int main(int argc, char const *argv[])
     //   if (out)
     //   {
     //     out << connections << " " << Connection::getCancledConnections() << " "
-    //       << Connection::connectionError << " " << Connection::handshakeError  
+    //       << Connection::connectionError << " " << Connection::handshakeError
     //       << " " << Connection::writeError << " " << megabytes << " "
     //       << seconds << std::endl;
     //     out.close();
@@ -342,7 +342,7 @@ int main(int argc, char const *argv[])
     //   {
     //     std::cerr << "can not open " << argv[6] << std::endl;
     //   }
-      
+
     // }
 
   }
