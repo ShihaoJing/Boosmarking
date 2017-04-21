@@ -62,9 +62,13 @@ public:
 
   void start()
   {
-    sock.async_handshake(boost::asio::ssl::stream_base::client,
+    for (;;)
+    {
+
+    }
+    /*sock.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
-        boost::asio::placeholders::error));
+        boost::asio::placeholders::error));*/
   }
 
 
