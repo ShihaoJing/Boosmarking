@@ -290,8 +290,8 @@ int main(int argc, char const *argv[])
     auto megabytes =
         static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
 
-    // std::cout << connections << " " << Connection::getCancledConnections() << " "
-    //           << seconds << std::endl;
+     std::cout << connections << " " << Connection::getCancledConnections() << " "
+               << seconds << std::endl;
 
     double average = 0;
     for (auto d : durations)
