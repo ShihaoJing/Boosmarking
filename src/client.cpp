@@ -62,10 +62,7 @@ public:
 
   void start()
   {
-    for (;;)
-    {
-
-    }
+    
     /*sock.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
         boost::asio::placeholders::error));*/
@@ -78,6 +75,7 @@ public:
   bool failed = false;
   decltype(std::chrono::steady_clock::now()) startTime;
   decltype(std::chrono::steady_clock::now()) stopTime;
+  std::size_t connectionID;
 
 
 private:
@@ -152,7 +150,6 @@ private:
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sock;
   std::vector<char> buffer;
   std::size_t m_messages;
-  std::size_t connectionID;
 };
 
 
@@ -197,6 +194,11 @@ public:
   {
     if (!error)
     {
+      // auto stopTime = std::chrono::steady_clock::now();
+      // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+      //               stopTime - new_connection->startTime);
+      // auto seconds = static_cast<double>(duration.count()) / 1000;
+      //std::cout << new_connection->connectionID << " client, time: " << seconds << std::endl;
       new_connection->start();
     }
     else
@@ -253,17 +255,22 @@ int main(int argc, char const *argv[])
 {
   try
   {
-    if (argc < 6) {
+    //if (argc < 6) {
+    if (argc < 4)
+    {
       std::cout << "Usage: " << argv[0]
-                << " ip port connections messages messageSize" << std::endl;
+                //<< " ip port connections messages messageSize" << std::endl;
+                  << " ip port connections" << std::endl;
 
       return 1;
     }
     std::string ip = argv[1];
     std::string port = argv[2];
     std::size_t connections = std::atoll(argv[3]);
-    std::size_t messages = std::atoll(argv[4]);
-    std::size_t messageSize = std::atoll(argv[5]);
+    //std::size_t messages = std::atoll(argv[4]);
+    //std::size_t messageSize = std::atoll(argv[5]);
+    std::size_t messages = 1;
+    std::size_t messageSize = 1;
     durations = std::vector<double>(connections+1);
 
     boost::asio::io_service io_service;
@@ -275,7 +282,8 @@ int main(int argc, char const *argv[])
     boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
     ctx.load_verify_file("cacert.pem");
 
-    ClientService cService(io_service, ctx, iterator, connections, messages, messageSize);
+    //ClientService cService(io_service, ctx, iterator, connections, messages, messageSize);
+    ClientService cService(io_service, ctx, iterator, connections, 1, 1);
 
     auto duration = measureTransferTime(cService, io_service);
     auto seconds = static_cast<double>(duration.count()) / 1000;
