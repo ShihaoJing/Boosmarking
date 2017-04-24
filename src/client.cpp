@@ -54,7 +54,7 @@ public:
 
   void start()
   {
-    for (;;){}
+    sleep(100);
     //boost::asio::read(sock, boost::asio::buffer(buffer));
     // boost::asio::async_read(sock, boost::asio::buffer(buffer),
     //       boost::bind(&Connection::handle_read, shared_from_this(),
@@ -223,8 +223,23 @@ public:
         durations[new_connection->connectionID] = -1.0;
       }
       Connection::decreaseRunningConnection();
-
+      
+      if (Connection::getRunningConnections() == 0)
+      {
+        double average = 0;
+        for (auto d : durations)
+        {
+          if (d > -1.0)
+          {
+            //std::cout << d << std::endl;
+            average += d;
+          }
+        }
+        average = average / m_connections;
+        std::cout << "average: " << average << std::endl;
+      }
       new_connection->start();
+
     }
     else
     {
