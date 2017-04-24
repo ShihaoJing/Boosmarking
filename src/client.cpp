@@ -11,7 +11,7 @@
 #include <vector>
 
 
-std::vector<double> durations;
+std::vector<long long> durations;
 
 class Connection : public boost::enable_shared_from_this<Connection>
 {
@@ -38,21 +38,13 @@ public:
 
   ~Connection()
   {
-    stopTime = std::chrono::steady_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    stopTime - startTime);
-    auto seconds = static_cast<double>(duration.count()) / 1000;
-    durations[connectionID] = seconds;
-    if (failed)
-    {
-      durations[connectionID] = -1.0;
-    }
-    --runningConnections;
+    
   }
 
   static std::size_t getRunningConnections() { return runningConnections; }
   static std::size_t getCancledConnections() { return cancledConnections; }
   static void increaseCancledConnection() { ++cancledConnections; }
+  static void decreaseRunningConnection() { --runningConnections; }
 
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
                   ::lowest_layer_type &socket()
@@ -62,7 +54,12 @@ public:
 
   void start()
   {
-    
+    for (;;){}
+    //boost::asio::read(sock, boost::asio::buffer(buffer));
+    // boost::asio::async_read(sock, boost::asio::buffer(buffer),
+    //       boost::bind(&Connection::handle_read, shared_from_this(),
+    //         boost::asio::placeholders::error,
+    //         boost::asio::placeholders::bytes_transferred));
     /*sock.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
         boost::asio::placeholders::error));*/
@@ -147,6 +144,22 @@ private:
     }
   }
 
+  void handle_read(const boost::system::error_code& error,
+      size_t bytes_transferred)
+  {
+    if (!error)
+    {
+      sock.async_read_some(boost::asio::buffer(buffer),
+          boost::bind(&Connection::handle_read, shared_from_this(),
+            boost::asio::placeholders::error,
+            boost::asio::placeholders::bytes_transferred));
+    }
+    else
+    {
+      delete this;
+    }
+  }
+
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sock;
   std::vector<char> buffer;
   std::size_t m_messages;
@@ -183,6 +196,11 @@ public:
                                   m_context, m_messages,
                                   m_messageSize);
       new_connection->startTime = std::chrono::steady_clock::now();
+      //auto duration = new_connection->startTime.time_since_epoch();
+      //auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+      //std::cout << "ID : " << new_connection->connectionID << " : " << milliseconds_since_epoch << std::endl;
+
+      //printf("%lu %lld \n", new_connection->connectionID, millis);
       boost::asio::async_connect(new_connection->socket(), m_iterator,
             boost::bind(&ClientService::handle_connect, this, new_connection,
             boost::asio::placeholders::error));
@@ -194,11 +212,18 @@ public:
   {
     if (!error)
     {
-      // auto stopTime = std::chrono::steady_clock::now();
-      // auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-      //               stopTime - new_connection->startTime);
-      // auto seconds = static_cast<double>(duration.count()) / 1000;
-      //std::cout << new_connection->connectionID << " client, time: " << seconds << std::endl;
+      new_connection->stopTime = std::chrono::steady_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                      new_connection->stopTime - new_connection->startTime).count();
+      auto seconds = static_cast<double>(duration / 1000);
+      printf("%lu %lld \n", new_connection->connectionID, duration);
+      durations[new_connection->connectionID] = duration;
+      if (new_connection->failed)
+      {
+        durations[new_connection->connectionID] = -1.0;
+      }
+      Connection::decreaseRunningConnection();
+
       new_connection->start();
     }
     else
@@ -211,7 +236,6 @@ public:
     }
   }
 
-private:
   boost::asio::io_service &m_service;
   boost::asio::ssl::context &m_context;
   boost::asio::ip::tcp::resolver::iterator &m_iterator;
@@ -238,7 +262,7 @@ std::chrono::milliseconds measureTransferTime(ClientService &cService,
 
     cService.start();
 
-    auto threads = createThreads(service, 4);
+    auto threads = createThreads(service, cService.m_connections);
     for (auto &thread : threads)
         thread.join();
     //m_service->run();
@@ -271,7 +295,7 @@ int main(int argc, char const *argv[])
     //std::size_t messageSize = std::atoll(argv[5]);
     std::size_t messages = 1;
     std::size_t messageSize = 1;
-    durations = std::vector<double>(connections+1);
+    durations = std::vector<long long>(connections+1);
 
     boost::asio::io_service io_service;
 
@@ -293,11 +317,17 @@ int main(int argc, char const *argv[])
     // std::cout << connections << " " << Connection::getCancledConnections() << " "
     //           << seconds << std::endl;
 
+    for (int i = 1; i < connections+1; ++i)
+    {
+      printf("%d %llu\n", i, durations[i]);
+    }
+
     double average = 0;
     for (auto d : durations)
     {
       if (d > -1.0)
       {
+        //std::cout << d << std::endl;
         average += d;
       }
     }
