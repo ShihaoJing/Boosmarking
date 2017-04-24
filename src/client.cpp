@@ -216,7 +216,7 @@ public:
       auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                       new_connection->stopTime - new_connection->startTime).count();
       auto seconds = static_cast<double>(duration / 1000);
-      printf("%lu %lld \n", new_connection->connectionID, duration);
+      printf("#: %lu  t: %lld \n", new_connection->connectionID, duration);
       durations[new_connection->connectionID] = duration;
       if (new_connection->failed)
       {
