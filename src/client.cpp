@@ -226,6 +226,29 @@ public:
       
       if (Connection::getRunningConnections() == 0)
       {
+        double median;
+
+        std::sort(durations.begin()+1, durations.end());
+        int startPos = 1;
+        for (int i = 0; i < durations.size(); ++i)
+        {
+          if (durations[i] > 0.0)
+          {
+            startPos = i;
+            break;
+          }
+        }
+
+        int size = (durations.size() - startPos);
+        if (size  % 2 == 0)
+        {
+            median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
+        }
+        else
+        {
+            median = durations[startPos + size / 2];
+        }
+
         double average = 0;
         for (auto d : durations)
         {
@@ -236,7 +259,7 @@ public:
           }
         }
         average = average / m_connections;
-        std::cout << "average: " << average << std::endl;
+        std::cout << "average: " << average  << " median:" << median << std::endl;
       }
       new_connection->start();
 
@@ -325,54 +348,54 @@ int main(int argc, char const *argv[])
     ClientService cService(io_service, ctx, iterator, connections, 1, 1);
 
     auto duration = measureTransferTime(cService, io_service);
-    auto seconds = static_cast<double>(duration.count()) / 1000;
-    auto megabytes =
-        static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
-
-     std::cout << "success: " << connections << " fail:" << Connection::getCancledConnections()
-               << std::endl;
-
-    for (int i = 1; i < connections+1; ++i)
-    {
-      printf("%d %llu\n", i, durations[i]);
-    }
-
-    double average = 0;
-    for (auto d : durations)
-    {
-      if (d > -1.0)
-      {
-        //std::cout << d << std::endl;
-        average += d;
-      }
-    }
-
-    average = average / (connections-static_cast<double>(Connection::getCancledConnections()));
-
-    double median;
-
-    std::sort(durations.begin()+1, durations.end());
-    int startPos = 1;
-    for (int i = 0; i < durations.size(); ++i)
-    {
-      if (durations[i] > 0.0)
-      {
-        startPos = i;
-        break;
-      }
-    }
-
-    int size = (durations.size() - startPos);
-    if (size  % 2 == 0)
-    {
-        median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
-    }
-    else
-    {
-        median = durations[startPos + size / 2];
-    }
-
-    std::cout << connections << " " << average << " "  << median << std::endl;
+//    auto seconds = static_cast<double>(duration.count()) / 1000;
+//    auto megabytes =
+//        static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
+//
+//     std::cout << "success: " << connections << " fail:" << Connection::getCancledConnections()
+//               << std::endl;
+//
+//    for (int i = 1; i < connections+1; ++i)
+//    {
+//      printf("%d %llu\n", i, durations[i]);
+//    }
+//
+//    double average = 0;
+//    for (auto d : durations)
+//    {
+//      if (d > -1.0)
+//      {
+//        //std::cout << d << std::endl;
+//        average += d;
+//      }
+//    }
+//
+//    average = average / (connections-static_cast<double>(Connection::getCancledConnections()));
+//
+//    double median;
+//
+//    std::sort(durations.begin()+1, durations.end());
+//    int startPos = 1;
+//    for (int i = 0; i < durations.size(); ++i)
+//    {
+//      if (durations[i] > 0.0)
+//      {
+//        startPos = i;
+//        break;
+//      }
+//    }
+//
+//    int size = (durations.size() - startPos);
+//    if (size  % 2 == 0)
+//    {
+//        median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
+//    }
+//    else
+//    {
+//        median = durations[startPos + size / 2];
+//    }
+//
+//    std::cout << connections << " " << average << " "  << median << std::endl;
 
     // std::cout << "Total connections: " << connections << std::endl;
     // std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
