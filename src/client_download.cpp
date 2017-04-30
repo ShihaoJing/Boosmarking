@@ -68,13 +68,14 @@ public:
     {
         //sleep(100);
         //boost::asio::read(sock, boost::asio::buffer(buffer));
-        // boost::asio::async_read(sock, boost::asio::buffer(buffer),
-        //       boost::bind(&Connection::handle_read, shared_from_this(),
-        //         boost::asio::placeholders::error,
-        //         boost::asio::placeholders::bytes_transferred));
+        /*sock.async_read_some(boost::asio::buffer(buffer),
+                             boost::bind(&Connection::handle_read, shared_from_this(),
+                                         boost::asio::placeholders::error,
+                                         boost::asio::placeholders::bytes_transferred));*/
         sock.async_handshake(boost::asio::ssl::stream_base::client,
                              boost::bind(&Connection::handle_handshake, shared_from_this(),
                                          boost::asio::placeholders::error));
+
     }
 
 
@@ -166,11 +167,15 @@ private:
     {
         if (!error)
         {
+            --m_messages;
             std::cout << "bytestransferred " << bytes_transferred << std::endl;
-            sock.async_read_some(boost::asio::buffer(buffer),
-                                 boost::bind(&Connection::handle_read, shared_from_this(),
-                                             boost::asio::placeholders::error,
-                                             boost::asio::placeholders::bytes_transferred));
+            if (m_messages > 0)
+            {
+                sock.async_read_some(boost::asio::buffer(buffer),
+                                     boost::bind(&Connection::handle_read, shared_from_this(),
+                                                 boost::asio::placeholders::error,
+                                                 boost::asio::placeholders::bytes_transferred));
+            }
         }
         else
         {
@@ -301,10 +306,8 @@ int main(int argc, char const *argv[])
         std::string ip = argv[1];
         std::string port = argv[2];
         std::size_t connections = std::atoll(argv[3]);
-        //std::size_t messages = std::atoll(argv[4]);
-        //std::size_t messageSize = std::atoll(argv[5]);
-        std::size_t messages = 1;
-        std::size_t messageSize = 1;
+        std::size_t messages = std::atoll(argv[4]);
+        std::size_t messageSize = std::atoll(argv[5]);
         durations = std::vector<long long>(connections+1);
 
         boost::asio::io_service io_service;
@@ -317,7 +320,7 @@ int main(int argc, char const *argv[])
         ctx.load_verify_file("cacert.pem");
 
         //ClientService cService(io_service, ctx, iterator, connections, messages, messageSize);
-        ClientService cService(io_service, ctx, iterator, connections, 1, 1);
+        ClientService cService(io_service, ctx, iterator, connections, messages, messageSize);
 
         auto duration = measureTransferTime(cService, io_service);
         //auto seconds = static_cast<double>(duration.count()) / 1000;
