@@ -11,6 +11,9 @@
 #include <vector>
 #include <unistd.h>
 
+#define Kilobytes(Value) ((Value)*1024LL)
+#define Megabytes(Value) (Kilobytes(Value)*1024LL)
+
 
 std::vector<long long> durations;
 
@@ -168,7 +171,7 @@ private:
         if (!error)
         {
             --m_messages;
-            std::cout << "bytestransferred " << bytes_transferred << std::endl;
+            //std::cout << "bytestransferred " << bytes_transferred << std::endl;
             if (m_messages > 0)
             {
                 sock.async_read_some(boost::asio::buffer(buffer),
@@ -306,8 +309,9 @@ int main(int argc, char const *argv[])
         std::string ip = argv[1];
         std::string port = argv[2];
         std::size_t connections = std::atoll(argv[3]);
-        std::size_t messages = std::atoll(argv[4]);
-        std::size_t messageSize = std::atoll(argv[5]);
+        std::size_t FileSize = std::atoll(argv[4]);
+        std::size_t messageSize = 4096;
+        std::size_t messages = Megabytes(FileSize) / messageSize;
         durations = std::vector<long long>(connections+1);
 
         boost::asio::io_service io_service;
