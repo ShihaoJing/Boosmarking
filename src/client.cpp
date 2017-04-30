@@ -9,6 +9,7 @@
 #include <thread>
 #include <fstream>
 #include <vector>
+#include <unistd.h>
 
 
 std::vector<long long> durations;
@@ -38,7 +39,7 @@ public:
 
   ~Connection()
   {
-    
+    Connection::decreaseRunningConnection();
   }
 
   static std::size_t getRunningConnections() { return runningConnections; }
@@ -54,15 +55,15 @@ public:
 
   void start()
   {
-    sleep(100);
+    //sleep(100);
     //boost::asio::read(sock, boost::asio::buffer(buffer));
     // boost::asio::async_read(sock, boost::asio::buffer(buffer),
     //       boost::bind(&Connection::handle_read, shared_from_this(),
     //         boost::asio::placeholders::error,
     //         boost::asio::placeholders::bytes_transferred));
-    /*sock.async_handshake(boost::asio::ssl::stream_base::client,
+    sock.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
-        boost::asio::placeholders::error));*/
+        boost::asio::placeholders::error));
   }
 
 
@@ -98,7 +99,7 @@ private:
   {
     if (!error)
     {
-      if (m_messages > 0)
+      /*if (m_messages > 0)
       {
         --m_messages;
         boost::asio::async_write(sock, boost::asio::buffer(buffer),
@@ -106,7 +107,18 @@ private:
                                shared_from_this(),
                                boost::asio::placeholders::error,
                                boost::asio::placeholders::bytes_transferred));
-      }
+      }*/
+        stopTime = std::chrono::steady_clock::now();
+
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                stopTime - startTime).count();
+        //printf("%ld \n%ld \n#: %lu  t: %ld \n", millis1, millis2, new_connection->connectionID, duration);
+        //printf("%lu  t: %ld \n", new_connection->connectionID, duration);
+        durations[connectionID] = duration;
+        if (failed)
+        {
+            durations[connectionID] = -1.0;
+        }
 
     }
     else
@@ -190,8 +202,10 @@ public:
 
   void start()
   {
+    unsigned int microseconds = 100;
     for (std::size_t i = 0; i != m_connections; ++i)
     {
+      usleep(microseconds);
       auto new_connection = boost::make_shared<Connection>(m_service,
                                   m_context, m_messages,
                                   m_messageSize);
@@ -200,7 +214,6 @@ public:
       //auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
       //std::cout << "ID : " << new_connection->connectionID << " : " << milliseconds_since_epoch << std::endl;
 
-      //printf("%lu %lld \n", new_connection->connectionID, millis);
       boost::asio::async_connect(new_connection->socket(), m_iterator,
             boost::bind(&ClientService::handle_connect, this, new_connection,
             boost::asio::placeholders::error));
@@ -212,55 +225,8 @@ public:
   {
     if (!error)
     {
-      new_connection->stopTime = std::chrono::steady_clock::now();
-      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                      new_connection->stopTime - new_connection->startTime).count();
-      auto seconds = static_cast<double>(duration / 1000);
-      printf("#: %lu  t: %lld \n", new_connection->connectionID, duration);
-      durations[new_connection->connectionID] = duration;
-      if (new_connection->failed)
-      {
-        durations[new_connection->connectionID] = -1.0;
-      }
-      Connection::decreaseRunningConnection();
-      
-      if (Connection::getRunningConnections() == 0)
-      {
-        double median;
 
-        std::sort(durations.begin()+1, durations.end());
-        int startPos = 1;
-        for (int i = 0; i < durations.size(); ++i)
-        {
-          if (durations[i] > 0.0)
-          {
-            startPos = i;
-            break;
-          }
-        }
 
-        int size = (durations.size() - startPos);
-        if (size  % 2 == 0)
-        {
-            median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
-        }
-        else
-        {
-            median = durations[startPos + size / 2];
-        }
-
-        double average = 0;
-        for (auto d : durations)
-        {
-          if (d > -1.0)
-          {
-            //std::cout << d << std::endl;
-            average += d;
-          }
-        }
-        average = average / m_connections;
-        std::cout << "average: " << average  << " median:" << median << std::endl;
-      }
       new_connection->start();
 
     }
@@ -300,7 +266,7 @@ std::chrono::milliseconds measureTransferTime(ClientService &cService,
 
     cService.start();
 
-    auto threads = createThreads(service, cService.m_connections);
+    auto threads = createThreads(service, 4);
     for (auto &thread : threads)
         thread.join();
     //m_service->run();
@@ -348,54 +314,52 @@ int main(int argc, char const *argv[])
     ClientService cService(io_service, ctx, iterator, connections, 1, 1);
 
     auto duration = measureTransferTime(cService, io_service);
-//    auto seconds = static_cast<double>(duration.count()) / 1000;
-//    auto megabytes =
-//        static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
-//
-//     std::cout << "success: " << connections << " fail:" << Connection::getCancledConnections()
-//               << std::endl;
-//
-//    for (int i = 1; i < connections+1; ++i)
-//    {
-//      printf("%d %llu\n", i, durations[i]);
-//    }
-//
-//    double average = 0;
-//    for (auto d : durations)
-//    {
-//      if (d > -1.0)
-//      {
-//        //std::cout << d << std::endl;
-//        average += d;
-//      }
-//    }
-//
-//    average = average / (connections-static_cast<double>(Connection::getCancledConnections()));
-//
-//    double median;
-//
-//    std::sort(durations.begin()+1, durations.end());
-//    int startPos = 1;
-//    for (int i = 0; i < durations.size(); ++i)
-//    {
-//      if (durations[i] > 0.0)
-//      {
-//        startPos = i;
-//        break;
-//      }
-//    }
-//
-//    int size = (durations.size() - startPos);
-//    if (size  % 2 == 0)
-//    {
-//        median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
-//    }
-//    else
-//    {
-//        median = durations[startPos + size / 2];
-//    }
-//
-//    std::cout << connections << " " << average << " "  << median << std::endl;
+    //auto seconds = static_cast<double>(duration.count()) / 1000;
+    //auto megabytes = static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
+
+    //std::cout << "success: " << connections << " fail:" << Connection::getCancledConnections() << std::endl;
+
+    /*for (int i = 1; i < connections+1; ++i)
+    {
+      printf("%d %llu\n", i, durations[i]);
+    }*/
+
+    double average = 0;
+    for (auto d : durations)
+    {
+      if (d > -1.0)
+      {
+        //std::cout << d << std::endl;
+        average += d;
+      }
+    }
+
+    average = average / (connections-static_cast<double>(Connection::getCancledConnections()));
+
+    double median;
+
+    std::sort(durations.begin()+1, durations.end());
+    int startPos = 1;
+    for (int i = 0; i < durations.size(); ++i)
+    {
+      if (durations[i] > 0.0)
+      {
+        startPos = i;
+        break;
+      }
+    }
+
+    int size = (durations.size() - startPos);
+    if (size  % 2 == 0)
+    {
+        median = (durations[startPos + size / 2 - 1] + durations[startPos + size / 2]) / 2;
+    }
+    else
+    {
+        median = durations[startPos + size / 2];
+    }
+
+    std::cout << connections << " " << average << " "  << median << std::endl;
 
     // std::cout << "Total connections: " << connections << std::endl;
     // std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
