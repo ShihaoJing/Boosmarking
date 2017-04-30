@@ -77,7 +77,7 @@ public:
   {
     if (!error)
     {
-      std::cout << m_messages << std::endl;
+      //std::cout << m_messages << std::endl;
       /*socket_.async_read_some(boost::asio::buffer(data_, max_length),
           boost::bind(&session::handle_read, this,
             boost::asio::placeholders::error,
