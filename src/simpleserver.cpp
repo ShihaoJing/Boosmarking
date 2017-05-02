@@ -3,10 +3,12 @@
 //
 
 #include <cstdlib>
+#include <cstring>
 #include <iostream>
-#include <thread>
-#include <utility>
+#include <sstream>
 #include <boost/asio.hpp>
+#include <chrono>
+#include <thread>
 
 using boost::asio::ip::tcp;
 
@@ -16,19 +18,22 @@ void session(tcp::socket sock)
 {
   try
   {
-    for (;;)
-    {
-      char data[max_length];
+      auto now = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+      printf("%ld \n", duration);
 
-      boost::system::error_code error;
-      size_t length = sock.read_some(boost::asio::buffer(data), error);
-      if (error == boost::asio::error::eof)
-        break; // Connection closed cleanly by peer.
-      else if (error)
-        throw boost::system::system_error(error); // Some other error.
+      std::string time = std::to_string(duration);
 
-      boost::asio::write(sock, boost::asio::buffer(data, length));
-    }
+      std::vector<char> buffer(time.size());
+
+      for (char c: time)
+      {
+        buffer.push_back(c);
+      }
+
+
+      boost::asio::write(sock, boost::asio::buffer(buffer));
+
   }
   catch (std::exception& e)
   {

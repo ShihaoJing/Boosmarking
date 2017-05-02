@@ -27,9 +27,9 @@ public:
   {
     ++runningConnections;
     connectionID = runningConnections;
-    sock.set_verify_mode(boost::asio::ssl::verify_peer);
+    /*sock.set_verify_mode(boost::asio::ssl::verify_peer);
     sock.set_verify_callback(
-        boost::bind(&Connection::verify_certificate, this, _1, _2));
+        boost::bind(&Connection::verify_certificate, this, _1, _2));*/
   }
 
   std::size_t getConnectionID()
@@ -39,6 +39,17 @@ public:
 
   ~Connection()
   {
+      stopTime = std::chrono::steady_clock::now();
+
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+              stopTime - startTime).count();
+      //printf("%ld \n%ld \n#: %lu  t: %ld \n", millis1, millis2, new_connection->connectionID, duration);
+      //printf("%lu  t: %ld \n", new_connection->connectionID, duration);
+      durations[connectionID] = duration;
+      if (failed)
+      {
+          durations[connectionID] = -1.0;
+      }
     Connection::decreaseRunningConnection();
   }
 
@@ -61,9 +72,9 @@ public:
     //       boost::bind(&Connection::handle_read, shared_from_this(),
     //         boost::asio::placeholders::error,
     //         boost::asio::placeholders::bytes_transferred));
-    sock.async_handshake(boost::asio::ssl::stream_base::client,
+    /*sock.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
-        boost::asio::placeholders::error));
+        boost::asio::placeholders::error));*/
   }
 
 
@@ -108,17 +119,7 @@ private:
                                boost::asio::placeholders::error,
                                boost::asio::placeholders::bytes_transferred));
       }*/
-        stopTime = std::chrono::steady_clock::now();
 
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-                stopTime - startTime).count();
-        //printf("%ld \n%ld \n#: %lu  t: %ld \n", millis1, millis2, new_connection->connectionID, duration);
-        //printf("%lu  t: %ld \n", new_connection->connectionID, duration);
-        durations[connectionID] = duration;
-        if (failed)
-        {
-            durations[connectionID] = -1.0;
-        }
 
     }
     else

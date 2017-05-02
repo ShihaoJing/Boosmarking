@@ -37,11 +37,11 @@ public:
   {
     if (!error)
     {
-      /*socket_.async_read_some(boost::asio::buffer(data_, max_length),
-          boost::bind(&session::handle_read, this,
+      socket_.async_read_some(boost::asio::buffer(buffer),
+          boost::bind(&session::handle_read, shared_from_this(),
             boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));*/
-        if (m_messages > 0)
+            boost::asio::placeholders::bytes_transferred));
+        /*if (m_messages > 0)
         {
           --m_messages;
           boost::asio::async_write(socket_, boost::asio::buffer(buffer),
@@ -49,29 +49,24 @@ public:
                                  shared_from_this(),
                                  boost::asio::placeholders::error,
                                  boost::asio::placeholders::bytes_transferred));
-        }
+        }*/
     }
     else
     {
     }
   }
 
-  /*void handle_read(const boost::system::error_code& error,
+  void handle_read(const boost::system::error_code& error,
       size_t bytes_transferred)
   {
     if (!error)
     {
-      socket_.async_read_some(boost::asio::buffer(data_, max_length),
-          boost::bind(&session::handle_read, this,
+      socket_.async_read_some(boost::asio::buffer(buffer),
+          boost::bind(&session::handle_read, shared_from_this(),
             boost::asio::placeholders::error,
             boost::asio::placeholders::bytes_transferred));
     }
-    else
-    {
-      delete this;
-    }
-  }*/
-
+  }
 
   void handle_write(const boost::system::error_code& error, std::size_t bytes_transferred)
   {
@@ -94,7 +89,6 @@ public:
     }
     else
     {
-      std::cout << m_messages << std::endl;
     }
   }
 

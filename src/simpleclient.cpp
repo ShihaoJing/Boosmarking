@@ -6,7 +6,9 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <sstream>
 #include <boost/asio.hpp>
+#include <chrono>
 
 using boost::asio::ip::tcp;
 
@@ -17,10 +19,12 @@ int main(int argc, char* argv[])
   try
     {
       if (argc != 3)
-        {
-          std::cerr << "Usage: blocking_tcp_echo_client <host> <port>\n";
-          return 1;
-        }
+      {
+        std::cerr << "Usage: blocking_tcp_echo_client <host> <port>\n";
+        return 1;
+      }
+
+
 
       boost::asio::io_service io_service;
 
@@ -28,21 +32,20 @@ int main(int argc, char* argv[])
       tcp::resolver resolver(io_service);
       boost::asio::connect(s, resolver.resolve({argv[1], argv[2]}));
 
-      std::cout << "Enter message: ";
-      char request[max_length];
-      std::cin.getline(request, max_length);
-      size_t request_length = std::strlen(request);
-      boost::asio::write(s, boost::asio::buffer(request, request_length));
 
+      std::vector<char> buffer(1024);
 
+      size_t length = s.read_some(boost::asio::buffer(buffer));
+      std::string begin(buffer.begin(), buffer.end());
 
-      char reply[max_length];
-      size_t reply_length = boost::asio::read(s,
-                                              boost::asio::buffer(reply, request_length));
+      auto now = std::chrono::high_resolution_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
+      std::string end = std::to_string(duration);
 
-      std::cout << "Reply is: ";
-      std::cout.write(reply, reply_length);
+      std::cout << begin << std::endl;
+      std::cout << end << std::endl;
+
       std::cout << "\n";
     }
   catch (std::exception& e)
