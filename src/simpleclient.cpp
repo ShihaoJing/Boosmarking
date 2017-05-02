@@ -10,6 +10,7 @@
 #include <fstream>
 #include <vector>
 #include <unistd.h>
+#include <chrono>
 
 
 std::vector<long long> durations;
@@ -22,8 +23,7 @@ class Connection : public boost::enable_shared_from_this<Connection>
   Connection(boost::asio::io_service &io_service,
              boost::asio::ssl::context &context,
              std::size_t messages, std::size_t messageSize)
-      : sock(io_service, context), m_messages(messages),
-        buffer(messageSize, '0')
+      : sock(io_service, context), buffer(1024)
   {
     ++runningConnections;
     connectionID = runningConnections;
@@ -39,13 +39,7 @@ class Connection : public boost::enable_shared_from_this<Connection>
 
   ~Connection()
   {
-    stopTime = std::chrono::steady_clock::now();
 
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-        stopTime - startTime).count();
-    //printf("%ld \n%ld \n#: %lu  t: %ld \n", millis1, millis2, new_connection->connectionID, duration);
-    //printf("%lu  t: %ld \n", new_connection->connectionID, duration);
-    durations[connectionID] = duration;
     if (failed)
     {
       durations[connectionID] = -1.0;
@@ -66,15 +60,9 @@ class Connection : public boost::enable_shared_from_this<Connection>
 
   void start()
   {
-    //sleep(100);
-    //boost::asio::read(sock, boost::asio::buffer(buffer));
-    // boost::asio::async_read(sock, boost::asio::buffer(buffer),
-    //       boost::bind(&Connection::handle_read, shared_from_this(),
-    //         boost::asio::placeholders::error,
-    //         boost::asio::placeholders::bytes_transferred));
-    /*sock.async_handshake(boost::asio::ssl::stream_base::client,
+    sock.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
-        boost::asio::placeholders::error));*/
+        boost::asio::placeholders::error));
   }
 
 
@@ -110,16 +98,10 @@ class Connection : public boost::enable_shared_from_this<Connection>
   {
     if (!error)
     {
-      /*if (m_messages > 0)
-      {
-        --m_messages;
-        boost::asio::async_write(sock, boost::asio::buffer(buffer),
-                               boost::bind(&Connection::handle_write,
-                               shared_from_this(),
-                               boost::asio::placeholders::error,
-                               boost::asio::placeholders::bytes_transferred));
-      }*/
-
+      sock.async_read_some(boost::asio::buffer(buffer),
+                           boost::bind(&Connection::handle_read, shared_from_this(),
+                                       boost::asio::placeholders::error,
+                                       boost::asio::placeholders::bytes_transferred));
 
     }
     else
@@ -132,40 +114,22 @@ class Connection : public boost::enable_shared_from_this<Connection>
     }
   }
 
-  void handle_write(const boost::system::error_code& error,
-                    std::size_t bytes_transferred)
-  {
-    if (!error)
-    {
-      if (m_messages > 0)
-      {
-        --m_messages;
-        boost::asio::async_write(sock, boost::asio::buffer(buffer),
-                                 boost::bind(&Connection::handle_write,
-                                             shared_from_this(),
-                                             boost::asio::placeholders::error,
-                                             boost::asio::placeholders::bytes_transferred));
-      }
-    }
-    else
-    {
-      // std::cout << "# " <<  getConnectionID() << std::endl;
-      // std::cout << "write error: " << error.message() << std::endl;
-      ++writeError;
-      failed = true;
-      increaseCancledConnection();
-    }
-  }
-
   void handle_read(const boost::system::error_code& error,
                    size_t bytes_transferred)
   {
     if (!error)
     {
-      sock.async_read_some(boost::asio::buffer(buffer),
-                           boost::bind(&Connection::handle_read, shared_from_this(),
-                                       boost::asio::placeholders::error,
-                                       boost::asio::placeholders::bytes_transferred));
+      std::string begin;
+      for (int i = 0; i < buffer.size(); ++i)
+      {
+        if (isdigit(buffer[i]))
+          begin.push_back(buffer[i]);
+      }
+      auto now = std::chrono::high_resolution_clock::now();
+      auto end_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
+      std::string end = std::to_string(end_time);
+      durations[connectionID] = std::stol(end) - std::stol(begin);
     }
     else
     {
@@ -175,7 +139,6 @@ class Connection : public boost::enable_shared_from_this<Connection>
 
   boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sock;
   std::vector<char> buffer;
-  std::size_t m_messages;
 };
 
 
@@ -270,7 +233,7 @@ std::chrono::milliseconds measureTransferTime(ClientService &cService,
   auto threads = createThreads(service, 4);
   for (auto &thread : threads)
     thread.join();
-  //m_service->run();
+
   while (Connection::getRunningConnections() != 0)
     std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
