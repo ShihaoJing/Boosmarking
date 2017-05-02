@@ -38,7 +38,7 @@ class session : public boost::enable_shared_from_this<session>
     if (!error)
     {
 
-      auto now = std::chrono::high_resolution_clock::now();
+      auto now = std::chrono::steady_clock::now();
       auto begin_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
       std::string begin_str = std::to_string(begin_time);

@@ -125,11 +125,13 @@ class Connection : public boost::enable_shared_from_this<Connection>
         if (isdigit(buffer[i]))
           begin.push_back(buffer[i]);
       }
-      auto now = std::chrono::high_resolution_clock::now();
+      auto now = std::chrono::steady_clock::now();
       auto end_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
       std::string end = std::to_string(end_time);
       durations[connectionID] = std::stol(end) - std::stol(begin);
+      std::cout << begin << std::endl;
+      std::cout << end << std::endl;
     }
     else
     {
@@ -233,7 +235,7 @@ std::chrono::milliseconds measureTransferTime(ClientService &cService,
   auto threads = createThreads(service, 4);
   for (auto &thread : threads)
     thread.join();
-
+  //m_service->run();
   while (Connection::getRunningConnections() != 0)
     std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
