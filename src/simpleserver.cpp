@@ -78,10 +78,10 @@ class session : public boost::enable_shared_from_this<session>
   ssl_socket socket_;
 };
 
-class server
+class tcp_echo_server
 {
  public:
-  server(boost::asio::io_service& io_service, unsigned short port)
+  tcp_echo_server(boost::asio::io_service& io_service, unsigned short port)
       : io_service_(io_service),
         acceptor_(io_service,
                   boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
@@ -101,7 +101,7 @@ class server
   {
     auto new_session = boost::make_shared<session>(io_service_, context_);
     acceptor_.async_accept(new_session->socket(),
-                           boost::bind(&server::handle_accept, this, new_session,
+                           boost::bind(&tcp_echo_server::handle_accept, this, new_session,
                                        boost::asio::placeholders::error));
   }
 
@@ -131,14 +131,14 @@ int main(int argc, char* argv[])
   {
     if (argc < 2)
     {
-      std::cerr << "Usage: server <port>\n";
+      std::cerr << "Usage: tcp_echo_server <port>\n";
       return 1;
     }
 
     boost::asio::io_service io_service;
 
     using namespace std; // For atoi.
-    server s(io_service, atoi(argv[1]));
+    tcp_echo_server s(io_service, atoi(argv[1]));
 
     io_service.run();
   }
