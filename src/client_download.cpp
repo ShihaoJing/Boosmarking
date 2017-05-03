@@ -130,40 +130,8 @@ private:
 
 
         }
-        else
-        {
-            // std::cout << "# " <<  getConnectionID() << std::endl;
-            // std::cout << "handshake error: " << error.message() << std::endl;
-            ++handshakeError;
-            failed = true;
-            increaseCancledConnection();
-        }
     }
 
-    void handle_write(const boost::system::error_code& error,
-                      std::size_t bytes_transferred)
-    {
-        if (!error)
-        {
-            if (m_messages > 0)
-            {
-                --m_messages;
-                boost::asio::async_write(sock, boost::asio::buffer(buffer),
-                                         boost::bind(&Connection::handle_write,
-                                                     shared_from_this(),
-                                                     boost::asio::placeholders::error,
-                                                     boost::asio::placeholders::bytes_transferred));
-            }
-        }
-        else
-        {
-            // std::cout << "# " <<  getConnectionID() << std::endl;
-            // std::cout << "write error: " << error.message() << std::endl;
-            ++writeError;
-            failed = true;
-            increaseCancledConnection();
-        }
-    }
 
     void handle_read(const boost::system::error_code& error,
                      size_t bytes_transferred)
@@ -171,7 +139,6 @@ private:
         if (!error)
         {
             --m_messages;
-            //std::cout << "bytestransferred " << bytes_transferred << std::endl;
             if (m_messages > 0)
             {
                 sock.async_read_some(boost::asio::buffer(buffer),
@@ -179,10 +146,6 @@ private:
                                                  boost::asio::placeholders::error,
                                                  boost::asio::placeholders::bytes_transferred));
             }
-        }
-        else
-        {
-            delete this;
         }
     }
 

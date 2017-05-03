@@ -37,11 +37,7 @@ class session : public boost::enable_shared_from_this<session>
   {
     if (!error)
     {
-      socket_.async_read_some(boost::asio::buffer(buffer),
-                              boost::bind(&session::handle_read, shared_from_this(),
-                                          boost::asio::placeholders::error,
-                                          boost::asio::placeholders::bytes_transferred));
-      /*if (m_messages > 0)
+      if (m_messages > 0)
       {
         --m_messages;
         boost::asio::async_write(socket_, boost::asio::buffer(buffer),
@@ -49,7 +45,7 @@ class session : public boost::enable_shared_from_this<session>
                                shared_from_this(),
                                boost::asio::placeholders::error,
                                boost::asio::placeholders::bytes_transferred));
-      }*/
+      }
     }
     else
     {
