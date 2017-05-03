@@ -16,80 +16,56 @@ class session : public boost::enable_shared_from_this<session>
 {
 public:
   session(boost::asio::io_service& io_service,
-          boost::asio::ssl::context& context,
-          std::size_t messages, std::size_t messageSize)
+          boost::asio::ssl::context& context)
     : SSLSocket(io_service, context), TCPSocket(io_service)
   {
   }
 
-  ssl_socket::lowest_layer_type& socket()
+  ssl_socket::lowest_layer_type& GetSSLSocket()
   {
-    return socket_.lowest_layer();
+    return SSLSocket.lowest_layer();
   }
 
-  void start()
+  tcp_socket& GetTcpSocket()
   {
-    socket_.async_handshake(boost::asio::ssl::stream_base::server,
+    return TCPSocket;
+  }
+
+  void StartHandshake()
+  {
+    SSLSocket.async_handshake(boost::asio::ssl::stream_base::server,
         boost::bind(&session::handle_handshake, shared_from_this(),
           boost::asio::placeholders::error));
+  }
+
+  void StartEcho()
+  {
+    auto now = std::chrono::steady_clock::now();
+    auto begin_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+
+    std::string begin_str = std::to_string(begin_time);
+    std::vector<char> buffer(begin_str.begin(), begin_str.end());
+    boost::asio::async_write(TCPSocket, boost::asio::buffer(buffer),
+                             boost::bind(&session::handle_write,
+                                         shared_from_this(),
+                                         boost::asio::placeholders::error,
+                                         boost::asio::placeholders::bytes_transferred));
   }
 
   void handle_handshake(const boost::system::error_code& error)
   {
     if (!error)
     {
-      socket_.async_read_some(boost::asio::buffer(buffer),
-          boost::bind(&session::handle_read, shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
-        /*if (m_messages > 0)
-        {
-          --m_messages;
-          boost::asio::async_write(socket_, boost::asio::buffer(buffer),
-                                 boost::bind(&session::handle_write,
-                                 shared_from_this(),
-                                 boost::asio::placeholders::error,
-                                 boost::asio::placeholders::bytes_transferred));
-        }*/
-    }
-    else
-    {
+
     }
   }
 
-  void handle_read(const boost::system::error_code& error,
-      size_t bytes_transferred)
-  {
-    if (!error)
-    {
-      socket_.async_read_some(boost::asio::buffer(buffer),
-          boost::bind(&session::handle_read, shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
-    }
-  }
 
   void handle_write(const boost::system::error_code& error, std::size_t bytes_transferred)
   {
     if (!error)
     {
-      //std::cout << m_messages << std::endl;
-      /*socket_.async_read_some(boost::asio::buffer(data_, max_length),
-          boost::bind(&session::handle_read, this,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));*/
-        if (m_messages > 0)
-        {
-            --m_messages;
-            boost::asio::async_write(socket_, boost::asio::buffer(buffer),
-                                     boost::bind(&session::handle_write,
-                                                 shared_from_this(),
-                                                 boost::asio::placeholders::error,
-                                                 boost::asio::placeholders::bytes_transferred));
-        }
-    }
-    else
-    {
+      std::cout << bytes_transferred << " bytes transfered" << std::endl;
     }
   }
 
@@ -105,7 +81,8 @@ public:
     : io_service_(io_service),
       acceptor_(io_service,
           boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)),
-      context_(boost::asio::ssl::context::sslv23)
+      context_(boost::asio::ssl::context::sslv23),
+      IsTLS(isTLS)
 
   {
     context_.set_options(
@@ -121,9 +98,13 @@ public:
   {
     auto new_session = boost::make_shared<session>(io_service_,
                                                    context_);
-    acceptor_.async_accept(new_session->socket(),
-        boost::bind(&tcp_echo_server::handle_accept, this, new_session,
-          boost::asio::placeholders::error));
+    if (IsTLS == "TCP")
+    {
+      acceptor_.async_accept(new_session->GetTcpSocket(),
+                             boost::bind(&tcp_echo_server::handle_accept, this, new_session,
+                                         boost::asio::placeholders::error));
+    }
+
   }
 
   void handle_accept(boost::shared_ptr<session> new_session,
@@ -131,7 +112,10 @@ public:
   {
     if (!error)
     {
-      new_session->start();
+      if (IsTLS == "TCP")
+      {
+        new_session->StartEcho();
+      }
     }
     else
     {
@@ -144,6 +128,7 @@ private:
   boost::asio::io_service& io_service_;
   boost::asio::ip::tcp::acceptor acceptor_;
   boost::asio::ssl::context context_;
+  std::string IsTLS;
 };
 
 int main(int argc, char* argv[])
@@ -157,10 +142,8 @@ int main(int argc, char* argv[])
     }
 
     boost::asio::io_service io_service;
-    int port = atoi(argv[1]);
+    int port = std::atoi(argv[1]);
     std::string isTLS = argv[2];
-
-    using namespace std; // For atoi.
     tcp_echo_server server(io_service, port, isTLS);
 
     io_service.run();

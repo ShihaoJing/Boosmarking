@@ -11,6 +11,8 @@
 #include <vector>
 #include <unistd.h>
 
+typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
+typedef boost::asio::ip::tcp::socket tcp_socket;
 
 std::vector<long long> durations;
 
@@ -20,16 +22,12 @@ static std::atomic<std::size_t> runningConnections;
 static std::atomic<std::size_t> cancledConnections;
 public:
   Connection(boost::asio::io_service &io_service,
-             boost::asio::ssl::context &context,
-             std::size_t messages, std::size_t messageSize)
-      : sock(io_service, context), m_messages(messages),
-        buffer(messageSize, '0')
+             boost::asio::ssl::context &context)
+      : SSLSocket(io_service, context), TCPSocket(io_service),
+        buffer(1024)
   {
     ++runningConnections;
-    connectionID = runningConnections;
-    /*sock.set_verify_mode(boost::asio::ssl::verify_peer);
-    sock.set_verify_callback(
-        boost::bind(&Connection::verify_certificate, this, _1, _2));*/
+    connectionID = runningConnections - 1;
   }
 
   std::size_t getConnectionID()
@@ -48,33 +46,38 @@ public:
       durations[connectionID] = duration;
       if (failed)
       {
-          durations[connectionID] = -1.0;
+          durations[connectionID] = -1;
       }
     Connection::decreaseRunningConnection();
   }
 
-  static std::size_t getRunningConnections() { return runningConnections; }
-  static std::size_t getCancledConnections() { return cancledConnections; }
-  static void increaseCancledConnection() { ++cancledConnections; }
-  static void decreaseRunningConnection() { --runningConnections; }
 
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket>
-                  ::lowest_layer_type &socket()
+  ssl_socket::lowest_layer_type& GetSSLSocket()
   {
-    return sock.lowest_layer();
+    return SSLSocket.lowest_layer();
   }
 
-  void start()
+  tcp_socket& GetTcpSocket()
   {
-    //sleep(100);
-    //boost::asio::read(sock, boost::asio::buffer(buffer));
-    // boost::asio::async_read(sock, boost::asio::buffer(buffer),
-    //       boost::bind(&Connection::handle_read, shared_from_this(),
-    //         boost::asio::placeholders::error,
-    //         boost::asio::placeholders::bytes_transferred));
-    /*sock.async_handshake(boost::asio::ssl::stream_base::client,
+    return TCPSocket;
+  }
+
+  void startHandshake()
+  {
+    SSLSocket.set_verify_mode(boost::asio::ssl::verify_peer);
+    SSLSocket.set_verify_callback(
+        boost::bind(&Connection::verify_certificate, shared_from_this(), _1, _2));
+    SSLSocket.async_handshake(boost::asio::ssl::stream_base::client,
       boost::bind(&Connection::handle_handshake, shared_from_this(),
-        boost::asio::placeholders::error));*/
+        boost::asio::placeholders::error));
+  }
+
+  void startRead()
+  {
+    boost::asio::async_read(TCPSocket, boost::asio::buffer(buffer),
+                             boost::bind(&Connection::handle_read, shared_from_this(),
+                                         boost::asio::placeholders::error,
+                                         boost::asio::placeholders::bytes_transferred));
   }
 
 
@@ -86,6 +89,11 @@ public:
   decltype(std::chrono::steady_clock::now()) stopTime;
   std::size_t connectionID;
 
+
+  static std::size_t getRunningConnections() { return runningConnections; }
+  static std::size_t getCancledConnections() { return cancledConnections; }
+  static void increaseCancledConnection() { ++cancledConnections; }
+  static void decreaseRunningConnection() { --runningConnections; }
 
 private:
   bool verify_certificate(bool preverified,
@@ -110,72 +118,41 @@ private:
   {
     if (!error)
     {
-      /*if (m_messages > 0)
+      std::string begin;
+      for (int i = 0; i < buffer.size(); ++i)
       {
-        --m_messages;
-        boost::asio::async_write(sock, boost::asio::buffer(buffer),
-                               boost::bind(&Connection::handle_write,
-                               shared_from_this(),
-                               boost::asio::placeholders::error,
-                               boost::asio::placeholders::bytes_transferred));
-      }*/
+        if (isdigit(buffer[i]))
+          begin.push_back(buffer[i]);
+      }
+      auto now = std::chrono::steady_clock::now();
+      auto end_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-
+      std::string end = std::to_string(end_time);
+      durations[connectionID] = std::stol(end) - std::stol(begin);
+      std::cout << begin << std::endl;
+      std::cout << end << std::endl;
     }
     else
     {
-      // std::cout << "# " <<  getConnectionID() << std::endl;
-      // std::cout << "handshake error: " << error.message() << std::endl;
       ++handshakeError;
       failed = true;
       increaseCancledConnection();
     }
   }
 
-  void handle_write(const boost::system::error_code& error,
-                     std::size_t bytes_transferred)
-  {
-    if (!error)
-    {
-      if (m_messages > 0)
-      {
-        --m_messages;
-        boost::asio::async_write(sock, boost::asio::buffer(buffer),
-                               boost::bind(&Connection::handle_write,
-                               shared_from_this(),
-                               boost::asio::placeholders::error,
-                               boost::asio::placeholders::bytes_transferred));
-      }
-    }
-    else
-    {
-      // std::cout << "# " <<  getConnectionID() << std::endl;
-      // std::cout << "write error: " << error.message() << std::endl;
-      ++writeError;
-      failed = true;
-      increaseCancledConnection();
-    }
-  }
 
   void handle_read(const boost::system::error_code& error,
       size_t bytes_transferred)
   {
     if (!error)
     {
-      sock.async_read_some(boost::asio::buffer(buffer),
-          boost::bind(&Connection::handle_read, shared_from_this(),
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
-    }
-    else
-    {
-      delete this;
+
     }
   }
 
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> sock;
   std::vector<char> buffer;
-  std::size_t m_messages;
+  ssl_socket SSLSocket;
+  tcp_socket TCPSocket;
 };
 
 
@@ -192,30 +169,24 @@ public:
   ClientService(boost::asio::io_service &service,
                 boost::asio::ssl::context &context,
                 boost::asio::ip::tcp::resolver::iterator &iterator,
-                std::size_t connections, std::size_t messages,
-                std::size_t messageSize)
+                std::size_t connections)
                 : m_service(service), m_context(context), m_iterator(iterator),
-                m_connections(connections), m_messageSize(messageSize),
-                m_messages(messages)
+                m_connections(connections)
   {
     //do nothing
   }
 
   void start()
   {
-    unsigned int microseconds = 100;
     for (std::size_t i = 0; i != m_connections; ++i)
     {
-      usleep(microseconds);
-      auto new_connection = boost::make_shared<Connection>(m_service,
-                                  m_context, m_messages,
-                                  m_messageSize);
-      new_connection->startTime = std::chrono::steady_clock::now();
-      //auto duration = new_connection->startTime.time_since_epoch();
-      //auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
-      //std::cout << "ID : " << new_connection->connectionID << " : " << milliseconds_since_epoch << std::endl;
+      auto new_connection = boost::make_shared<Connection>(m_service, m_context);
+      /*new_connection->startTime = std::chrono::steady_clock::now();
+      auto duration = new_connection->startTime.time_since_epoch();
+      auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(duration).count();
+      std::cout << "ID : " << new_connection->connectionID << " : " << milliseconds_since_epoch << std::endl;*/
 
-      boost::asio::async_connect(new_connection->socket(), m_iterator,
+      boost::asio::async_connect(new_connection->GetTcpSocket(), m_iterator,
             boost::bind(&ClientService::handle_connect, this, new_connection,
             boost::asio::placeholders::error));
     }
@@ -226,10 +197,7 @@ public:
   {
     if (!error)
     {
-
-
-      new_connection->start();
-
+      new_connection->startRead();
     }
     else
     {
@@ -244,8 +212,6 @@ public:
   boost::asio::io_service &m_service;
   boost::asio::ssl::context &m_context;
   boost::asio::ip::tcp::resolver::iterator &m_iterator;
-  std::size_t m_messageSize;
-  std::size_t m_messages;
   std::size_t m_connections;
 };
 
@@ -270,7 +236,7 @@ std::chrono::milliseconds measureTransferTime(ClientService &cService,
     auto threads = createThreads(service, 4);
     for (auto &thread : threads)
         thread.join();
-    //m_service->run();
+
     while (Connection::getRunningConnections() != 0)
         std::this_thread::sleep_for(std::chrono::milliseconds{10});
 
@@ -296,11 +262,8 @@ int main(int argc, char const *argv[])
     std::string ip = argv[1];
     std::string port = argv[2];
     std::size_t connections = std::atoll(argv[3]);
-    //std::size_t messages = std::atoll(argv[4]);
-    //std::size_t messageSize = std::atoll(argv[5]);
-    std::size_t messages = 1;
-    std::size_t messageSize = 1;
-    durations = std::vector<long long>(connections+1);
+
+    durations = std::vector<long long>(connections);
 
     boost::asio::io_service io_service;
 
@@ -308,24 +271,15 @@ int main(int argc, char const *argv[])
     boost::asio::ip::tcp::resolver::query query(ip, port);
     boost::asio::ip::tcp::resolver::iterator iterator = resolver.resolve(query);
 
-    boost::asio::ssl::context ctx(boost::asio::ssl::context::sslv23);
+    boost::asio::ssl::context ctx;
     ctx.load_verify_file("cacert.pem");
 
     //ClientService cService(io_service, ctx, iterator, connections, messages, messageSize);
-    ClientService cService(io_service, ctx, iterator, connections, 1, 1);
+    ClientService cService(io_service, ctx, iterator, connections);
 
     auto duration = measureTransferTime(cService, io_service);
-    //auto seconds = static_cast<double>(duration.count()) / 1000;
-    //auto megabytes = static_cast<double>((connections-static_cast<double>(Connection::getCancledConnections())) * messages * messageSize) / 1024 / 1024;
 
-    //std::cout << "success: " << connections << " fail:" << Connection::getCancledConnections() << std::endl;
-
-    /*for (int i = 1; i < connections+1; ++i)
-    {
-      printf("%d %llu\n", i, durations[i]);
-    }*/
-
-    double average = 0;
+   /* double average = 0;
     for (auto d : durations)
     {
       if (d > -1.0)
@@ -360,35 +314,7 @@ int main(int argc, char const *argv[])
         median = durations[startPos + size / 2];
     }
 
-    std::cout << connections << " " << average << " "  << median << std::endl;
-
-    // std::cout << "Total connections: " << connections << std::endl;
-    // std::cout << "Failed Connections: " << Connection::getCancledConnections() << std::endl;
-    // std::cout << "Connection errors: " << Connection::connectionError << std::endl;
-    // std::cout << "Handshake errors: " << Connection::handshakeError << std::endl;
-    // std::cout << "Write errors: " << Connection::writeError << std::endl;
-    // std::cout << megabytes << " megabytes sent and received in " << seconds
-    //           << " seconds. (" << (megabytes / seconds) << " MB/s)"
-    //           << std::endl;
-
-    // if (argc == 7)
-    // {
-    //   std::cout << argv[6] << std::endl;
-    //   std::ofstream out(argv[6], std::ofstream::out|std::ofstream::app);
-    //   if (out)
-    //   {
-    //     out << connections << " " << Connection::getCancledConnections() << " "
-    //       << Connection::connectionError << " " << Connection::handshakeError
-    //       << " " << Connection::writeError << " " << megabytes << " "
-    //       << seconds << std::endl;
-    //     out.close();
-    //   }
-    //   else
-    //   {
-    //     std::cerr << "can not open " << argv[6] << std::endl;
-    //   }
-
-    // }
+    std::cout << connections << " " << average << " "  << median << std::endl;*/
 
   }
   catch (std::exception& e)
