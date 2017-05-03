@@ -273,8 +273,8 @@ int main(int argc, char const *argv[])
         std::string port = argv[2];
         std::size_t connections = std::atoll(argv[3]);
         std::size_t FileSize = std::atoll(argv[4]);
-        std::size_t messageSize = 4096;
-        std::size_t messages = Megabytes(FileSize) / messageSize;
+        std::size_t messageSize = 1024;
+        std::size_t messages = Kilobytes(FileSize) / messageSize;
         durations = std::vector<long long>(connections+1);
 
         boost::asio::io_service io_service;

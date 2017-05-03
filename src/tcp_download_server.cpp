@@ -158,8 +158,8 @@ int main(int argc, char* argv[])
 
     boost::asio::io_service io_service;
     std::size_t FileSize = std::atoll(argv[2]);
-    std::size_t messageSize = 4096;
-    std::size_t messages = Megabytes(FileSize) / messageSize;
+    std::size_t messageSize = 1024;
+    std::size_t messages = Kilobytes(FileSize) / messageSize;
     std::cout << messages << std::endl;
 
     using namespace std; // For atoi.
