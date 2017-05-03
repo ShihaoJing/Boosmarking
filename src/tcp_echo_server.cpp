@@ -40,13 +40,13 @@ public:
 
   void StartEcho()
   {
-    auto now = std::chrono::steady_clock::now();
+    auto now = std::chrono::high_resolution_clock::now();
     auto begin_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
     std::string begin_str = std::to_string(begin_time);
     std::vector<char> buffer(begin_str.begin(), begin_str.end());
-    boost::asio::async_write(TCPSocket, boost::asio::buffer(buffer),
-                             boost::bind(&session::handle_write,
+    TCPSocket.async_write_some(boost::asio::buffer(buffer),
+                             boost::bind(&session::HandleWrite,
                                          shared_from_this(),
                                          boost::asio::placeholders::error,
                                          boost::asio::placeholders::bytes_transferred));
@@ -56,12 +56,22 @@ public:
   {
     if (!error)
     {
+      std::cout << " handshaked !" << std::endl;
+      auto now = std::chrono::high_resolution_clock::now();
+      auto begin_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
+      std::string begin_str = std::to_string(begin_time);
+      std::vector<char> buffer(begin_str.begin(), begin_str.end());
+      SSLSocket.async_write_some(boost::asio::buffer(buffer),
+                               boost::bind(&session::HandleWrite,
+                                           shared_from_this(),
+                                           boost::asio::placeholders::error,
+                                           boost::asio::placeholders::bytes_transferred));
     }
   }
 
 
-  void handle_write(const boost::system::error_code& error, std::size_t bytes_transferred)
+  void HandleWrite(const boost::system::error_code& error, std::size_t bytes_transferred)
   {
     if (!error)
     {
@@ -104,6 +114,12 @@ public:
                              boost::bind(&tcp_echo_server::handle_accept, this, new_session,
                                          boost::asio::placeholders::error));
     }
+    if (IsTLS == "TLS")
+    {
+      acceptor_.async_accept(new_session->GetSSLSocket(),
+                             boost::bind(&tcp_echo_server::handle_accept, this, new_session,
+                                         boost::asio::placeholders::error));
+    }
 
   }
 
@@ -116,11 +132,11 @@ public:
       {
         new_session->StartEcho();
       }
+      if (IsTLS == "TLS")
+      {
+        new_session->StartHandshake();
+      }
     }
-    else
-    {
-    }
-
     start_accept();
   }
 
@@ -135,9 +151,9 @@ int main(int argc, char* argv[])
 {
   try
   {
-    if (argc <= 2)
+    if (argc < 3)
     {
-      std::cerr << "Usage: tcp_echo_server <port>\n";
+      std::cerr << "Usage: tcp_echo_server <port> <mode>\n";
       return 1;
     }
 

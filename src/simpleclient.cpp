@@ -125,7 +125,7 @@ class Connection : public boost::enable_shared_from_this<Connection>
         if (isdigit(buffer[i]))
           begin.push_back(buffer[i]);
       }
-      auto now = std::chrono::steady_clock::now();
+      auto now = std::chrono::high_resolution_clock::now();
       auto end_time = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
       std::string end = std::to_string(end_time);
